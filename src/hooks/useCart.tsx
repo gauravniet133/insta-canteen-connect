@@ -1,8 +1,8 @@
-
 import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { orderService } from '@/services/orderService';
+import { useNavigate } from 'react-router-dom';
 
 type CartItem = {
   id: string;
@@ -43,6 +43,7 @@ interface CartProviderProps {
 export const CartProvider = ({ children }: CartProviderProps) => {
   const { user } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [items, setItems] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -190,6 +191,9 @@ export const CartProvider = ({ children }: CartProviderProps) => {
         title: "Order Placed Successfully!",
         description: `${orderIds.length > 1 ? 'Orders have' : 'Order has'} been placed and ${orderIds.length > 1 ? 'are' : 'is'} being processed`,
       });
+      
+      // Navigate to order confirmation page
+      navigate(`/order-confirmation/${orderIds[0]}`);
       
       return { success: true, orderId: orderIds[0] };
     } catch (error) {
