@@ -48,9 +48,9 @@ const FoodItemCard = ({ item }: FoodItemCardProps) => {
   };
 
   return (
-    <Card className="overflow-hidden hover:shadow-lg transition-shadow duration-200">
+    <Card className="overflow-hidden hover:shadow-lg transition-shadow duration-200 w-full">
       {item.image_url && (
-        <div className="aspect-video overflow-hidden">
+        <div className="aspect-video sm:aspect-[4/3] overflow-hidden">
           <img
             src={item.image_url}
             alt={item.name}
@@ -59,59 +59,59 @@ const FoodItemCard = ({ item }: FoodItemCardProps) => {
         </div>
       )}
       
-      <CardContent className="p-4 space-y-3">
-        <div className="flex items-start justify-between">
-          <div className="flex-1">
-            <h3 className="font-semibold text-lg text-gray-900">{item.name}</h3>
-            <p className="text-sm text-gray-600 mt-1 line-clamp-2">{item.description}</p>
+      <CardContent className="p-3 sm:p-4 space-y-3">
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex-1 min-w-0">
+            <h3 className="font-semibold text-base sm:text-lg text-gray-900 truncate">{item.name}</h3>
+            <p className="text-xs sm:text-sm text-gray-600 mt-1 line-clamp-2 leading-relaxed">{item.description}</p>
           </div>
           {!item.is_available && (
-            <Badge variant="secondary" className="ml-2">
+            <Badge variant="secondary" className="text-xs shrink-0">
               Unavailable
             </Badge>
           )}
         </div>
 
-        <div className="flex items-center justify-between text-sm text-gray-500">
-          <div className="flex items-center space-x-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs sm:text-sm text-gray-500">
+          <div className="flex items-center space-x-3 sm:space-x-4">
             <div className="flex items-center">
-              <Clock className="h-4 w-4 mr-1" />
-              {item.preparation_time} min
+              <Clock className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
+              <span className="whitespace-nowrap">{item.preparation_time} min</span>
             </div>
             {item.rating && (
               <div className="flex items-center">
-                <Star className="h-4 w-4 mr-1 fill-yellow-400 text-yellow-400" />
-                {item.rating}
+                <Star className="h-3 w-3 sm:h-4 sm:w-4 mr-1 fill-yellow-400 text-yellow-400" />
+                <span>{item.rating}</span>
               </div>
             )}
           </div>
-          <Badge variant="outline" className="text-xs">
+          <Badge variant="outline" className="text-xs w-fit">
             {item.category}
           </Badge>
         </div>
 
-        <div className="flex items-center justify-between pt-2 border-t">
-          <div className="font-bold text-xl text-green-600">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-2 border-t">
+          <div className="font-bold text-lg sm:text-xl text-green-600">
             ₹{item.price}
           </div>
           
           {item.is_available ? (
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center justify-between sm:justify-end space-x-2">
               <div className="flex items-center border rounded-lg">
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                  className="h-8 w-8 p-0"
+                  className="h-7 w-7 sm:h-8 sm:w-8 p-0"
                 >
                   <Minus className="h-3 w-3" />
                 </Button>
-                <span className="w-8 text-center text-sm font-medium">{quantity}</span>
+                <span className="w-6 sm:w-8 text-center text-sm font-medium">{quantity}</span>
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => setQuantity(quantity + 1)}
-                  className="h-8 w-8 p-0"
+                  className="h-7 w-7 sm:h-8 sm:w-8 p-0"
                 >
                   <Plus className="h-3 w-3" />
                 </Button>
@@ -120,13 +120,13 @@ const FoodItemCard = ({ item }: FoodItemCardProps) => {
               <Button
                 onClick={handleAddToCart}
                 size="sm"
-                className="bg-orange-500 hover:bg-orange-600"
+                className="bg-orange-500 hover:bg-orange-600 px-3 sm:px-4 text-xs sm:text-sm"
               >
                 Add to Cart
               </Button>
             </div>
           ) : (
-            <Button size="sm" disabled>
+            <Button size="sm" disabled className="w-full sm:w-auto">
               Not Available
             </Button>
           )}

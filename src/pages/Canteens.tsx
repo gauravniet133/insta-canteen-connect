@@ -70,44 +70,44 @@ const Canteens = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-lg">Loading canteens...</div>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+        <div className="text-base sm:text-lg">Loading canteens...</div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-lg text-red-600">Error loading canteens</div>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+        <div className="text-base sm:text-lg text-red-600">Error loading canteens</div>
       </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">All Canteens</h1>
-          <p className="text-gray-600">Discover all the food options available on campus</p>
+        <div className="mb-6 sm:mb-8">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">All Canteens</h1>
+          <p className="text-gray-600 text-sm sm:text-base">Discover all the food options available on campus</p>
         </div>
 
         {/* Filters */}
-        <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6 mb-6 sm:mb-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
               <Input
                 placeholder="Search canteens or cuisines..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
+                className="pl-10 text-sm sm:text-base"
               />
             </div>
             
             <Select value={filterStatus} onValueChange={setFilterStatus}>
-              <SelectTrigger>
+              <SelectTrigger className="text-sm sm:text-base">
                 <Filter className="h-4 w-4 mr-2" />
                 <SelectValue placeholder="Filter by status" />
               </SelectTrigger>
@@ -119,7 +119,7 @@ const Canteens = () => {
             </Select>
 
             <Select value={sortBy} onValueChange={setSortBy}>
-              <SelectTrigger>
+              <SelectTrigger className="text-sm sm:text-base">
                 <SelectValue placeholder="Sort by" />
               </SelectTrigger>
               <SelectContent>
@@ -129,24 +129,24 @@ const Canteens = () => {
               </SelectContent>
             </Select>
 
-            <div className="text-sm text-gray-500 flex items-center">
+            <div className="text-xs sm:text-sm text-gray-500 flex items-center justify-center sm:justify-start">
               {sortedCanteens.length} canteen{sortedCanteens.length !== 1 ? 's' : ''} found
             </div>
           </div>
         </div>
 
         {/* Canteens Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           {sortedCanteens.map((canteen) => (
             <Card key={canteen.id} className="overflow-hidden hover:shadow-lg transition-shadow">
               <div className="relative">
                 <img 
                   src={canteen.image_url || 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=500&h=300&fit=crop'} 
                   alt={canteen.name}
-                  className="w-full h-48 object-cover"
+                  className="w-full h-40 sm:h-48 object-cover"
                 />
                 <Badge 
-                  className={`absolute top-4 right-4 ${
+                  className={`absolute top-3 sm:top-4 right-3 sm:right-4 text-xs sm:text-sm ${
                     canteen.status === 'open' ? 'bg-green-500' : 
                     canteen.status === 'busy' ? 'bg-yellow-500' : 'bg-red-500'
                   }`}
@@ -155,8 +155,8 @@ const Canteens = () => {
                    canteen.status === 'busy' ? 'Busy' : 'Closed'}
                 </Badge>
               </div>
-              <CardContent className="p-6">
-                <h3 className="text-xl font-semibold mb-2">{canteen.name}</h3>
+              <CardContent className="p-4 sm:p-6">
+                <h3 className="text-lg sm:text-xl font-semibold mb-2">{canteen.name}</h3>
                 <p className="text-gray-600 text-sm mb-3 line-clamp-2">
                   {canteen.description}
                 </p>
@@ -171,18 +171,18 @@ const Canteens = () => {
                   {canteen.canteen_cuisines.map(c => c.cuisine_name).join(' • ')}
                 </p>
                 
-                <div className="flex items-center justify-between text-sm text-gray-500 mb-4">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between text-sm text-gray-500 mb-4 gap-2">
                   <div className="flex items-center">
                     <Clock className="h-4 w-4 mr-1" />
                     {canteen.delivery_time_min}-{canteen.delivery_time_max} min
                   </div>
                   <div className="flex items-center">
                     <MapPin className="h-4 w-4 mr-1" />
-                    {canteen.location}
+                    <span className="truncate">{canteen.location}</span>
                   </div>
                 </div>
                 
-                <Button className="w-full" asChild disabled={canteen.status === 'closed'}>
+                <Button className="w-full text-sm sm:text-base" asChild disabled={canteen.status === 'closed'}>
                   <Link to={`/canteen/${canteen.id}`}>
                     {canteen.status === 'closed' ? 'Currently Closed' : 'View Menu'}
                   </Link>
@@ -194,14 +194,14 @@ const Canteens = () => {
 
         {sortedCanteens.length === 0 && (
           <div className="text-center py-12">
-            <p className="text-gray-500 text-lg">No canteens found matching your criteria.</p>
+            <p className="text-gray-500 text-base sm:text-lg mb-4">No canteens found matching your criteria.</p>
             <Button 
               variant="outline" 
               onClick={() => {
                 setSearchTerm('');
                 setFilterStatus('all');
               }}
-              className="mt-4"
+              className="text-sm sm:text-base"
             >
               Clear Filters
             </Button>
