@@ -16,6 +16,7 @@ interface FoodItem {
   name: string;
   description: string;
   price: number;
+  preparation_time: number;
   category: string;
   image_url: string;
   rating: number;
@@ -177,8 +178,20 @@ const Search = () => {
                 {sortedItems.map((item) => (
                   <FoodItemCard
                     key={item.id}
-                    item={item}
-                    canteenName={item.canteens.name}
+                    item={{
+                      id: item.id,
+                      name: item.name,
+                      description: item.description,
+                      price: item.price,
+                      preparation_time: item.preparation_time,
+                      is_available: item.is_available,
+                      category: item.category,
+                      canteen_id: item.canteen_id,
+                      canteen_name: item.canteens.name,
+                      rating: item.rating,
+                      total_reviews: item.total_reviews,
+                      image_url: item.image_url,
+                    }}
                   />
                 ))}
               </div>

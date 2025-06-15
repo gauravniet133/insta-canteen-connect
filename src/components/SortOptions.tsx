@@ -1,10 +1,11 @@
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ArrowUpDown } from 'lucide-react';
+import { SortBy } from '@/hooks/useSort';
 
 interface SortOptionsProps {
-  sortBy: string;
-  onSortChange: (sortBy: string) => void;
+  sortBy: SortBy;
+  onSortChange: (sortBy: SortBy) => void;
   sortOrder: 'asc' | 'desc';
   onSortOrderChange: (order: 'asc' | 'desc') => void;
 }
@@ -13,7 +14,7 @@ const SortOptions = ({ sortBy, onSortChange, sortOrder, onSortOrderChange }: Sor
   return (
     <div className="flex items-center gap-3">
       <span className="text-sm text-gray-600 whitespace-nowrap">Sort by:</span>
-      <Select value={sortBy} onValueChange={onSortChange}>
+      <Select value={sortBy} onValueChange={(value) => onSortChange(value as SortBy)}>
         <SelectTrigger className="w-[140px]">
           <SelectValue />
         </SelectTrigger>
