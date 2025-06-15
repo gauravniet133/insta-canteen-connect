@@ -3,9 +3,10 @@ import { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Minus, Clock, Star } from 'lucide-react';
+import { Plus, Minus, Clock } from 'lucide-react';
 import { useCart } from '@/hooks/useCart';
 import { useAuth } from '@/hooks/useAuth';
+import RatingDisplay from './RatingDisplay';
 
 type FoodItem = {
   id: string;
@@ -18,6 +19,7 @@ type FoodItem = {
   canteen_id: string;
   canteen_name: string;
   rating?: number;
+  total_reviews?: number;
   image_url?: string;
 };
 
@@ -78,11 +80,13 @@ const FoodItemCard = ({ item }: FoodItemCardProps) => {
               <Clock className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
               <span className="whitespace-nowrap">{item.preparation_time} min</span>
             </div>
-            {item.rating && (
-              <div className="flex items-center">
-                <Star className="h-3 w-3 sm:h-4 sm:w-4 mr-1 fill-yellow-400 text-yellow-400" />
-                <span>{item.rating}</span>
-              </div>
+            {item.rating !== undefined && item.rating > 0 && (
+              <RatingDisplay 
+                rating={item.rating} 
+                totalReviews={item.total_reviews}
+                size="sm"
+                showBadge={false}
+              />
             )}
           </div>
           <Badge variant="outline" className="text-xs w-fit">

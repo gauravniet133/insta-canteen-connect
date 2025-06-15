@@ -3,10 +3,11 @@ import { Link } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Star, Clock, MapPin } from 'lucide-react';
+import { Clock, MapPin } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import LoadingSpinner from './LoadingSpinner';
+import RatingDisplay from './RatingDisplay';
 
 const FeaturedCanteens = () => {
   const { data: featuredCanteens = [], isLoading } = useQuery({
@@ -75,10 +76,12 @@ const FeaturedCanteens = () => {
                     {canteen.description}
                   </p>
                   
-                  <div className="flex items-center mb-4">
-                    <Star className="h-5 w-5 fill-yellow-400 text-yellow-400 mr-2" />
-                    <span className="text-base font-bold text-gray-900">{canteen.rating || 0}</span>
-                    <span className="text-sm text-gray-500 ml-2">({canteen.total_reviews || 0} reviews)</span>
+                  <div className="mb-4">
+                    <RatingDisplay 
+                      rating={canteen.rating || 0} 
+                      totalReviews={canteen.total_reviews || 0}
+                      size="md"
+                    />
                   </div>
                   
                   <p className="text-gray-700 text-base mb-6 font-medium">
