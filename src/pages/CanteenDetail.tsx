@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
@@ -7,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
-import { ArrowLeft, Clock, Star, MapPin, Phone, Search, Plus, Minus, ShoppingCart } from 'lucide-react';
+import { ArrowLeft, Clock, Star, MapPin, Phone, Search, Plus, ShoppingCart } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
@@ -52,7 +53,7 @@ const CanteenDetail = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
-  const { addItem, items: cartItems, totalAmount, itemCount, placeOrder, loading: cartLoading } = useCart();
+  const { addItem, items: cartItems, itemCount, placeOrder, loading: cartLoading } = useCart();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [specialInstructions, setSpecialInstructions] = useState('');
@@ -110,13 +111,22 @@ const CanteenDetail = () => {
       return;
     }
 
+    if (!id || !canteen) {
+      toast({
+        title: "Error",
+        description: "Unable to add item to cart.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     addItem({
       food_item_id: item.id,
       name: item.name,
       price: item.price,
       quantity,
-      canteen_id: item.canteen_id,
-      canteen_name: canteen?.name || 'Unknown Canteen'
+      canteen_id: id,
+      canteen_name: canteen.name
     });
   };
 
