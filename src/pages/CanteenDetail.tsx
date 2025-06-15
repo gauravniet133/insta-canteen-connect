@@ -1,15 +1,18 @@
-
 import { useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
+import { Textarea } from '@/components/ui/textarea';
 import { ArrowLeft, Clock, Star, MapPin, Phone, Search, Plus, Minus, ShoppingCart } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useAuth } from '@/hooks/useAuth';
+import { orderService } from '@/services/orderService';
+import { useToast } from '@/hooks/use-toast';
 
 type FoodItem = {
   id: string;
@@ -46,9 +49,15 @@ type Canteen = {
 
 const CanteenDetail = () => {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [cart, setCart] = useState<{ [key: string]: number }>({});
+  const [specialInstructions, setSpecialInstructions] = useState('');
+  const [isPlacingOrder, setIsPlacingOrder] = useState(false);
 
   const { data: canteen, isLoading: canteenLoading } = useQuery({
     queryKey: ['canteen', id],
@@ -115,6 +124,74 @@ const CanteenDetail = () => {
 
   const getCartItemCount = () => {
     return Object.values(cart).reduce((total, quantity) => total + quantity, 0);
+  };
+
+  const handlePlaceOrder = async () => {
+    if (!user) {
+      toast({
+        title: "Authentication required",
+        description: "Please sign in to place an order.",
+        variant: "destructive",
+      });
+      navigate('/auth');
+      return;
+    }
+
+    if (getCartItemCount() === 0) {
+      toast({
+        title: "Cart is empty",
+        description: "Please add items to your cart before placing an order.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsPlacingOrder(true);
+
+    try {
+      const orderItems = Object.entries(cart)
+        .filter(([_, quantity]) => quantity > 0)
+        .map(([itemId, quantity]) => {
+          const item = foodItems.find(item => item.id === itemId);
+          return {
+            food_item_id: itemId,
+            quantity,
+            price: item!.price,
+          };
+        });
+
+      const order = await orderService.createOrder({
+        canteen_id: id!,
+        order_items: orderItems,
+        total_amount: getCartTotal(),
+        delivery_fee: 5, // Fixed delivery fee
+        special_instructions: specialInstructions || undefined,
+      });
+
+      toast({
+        title: "Order placed successfully!",
+        description: `Your order #${order.id.slice(0, 8)} has been placed and will be ready in ${canteen?.delivery_time_min}-${canteen?.delivery_time_max} minutes.`,
+      });
+
+      // Clear cart and reset form
+      setCart({});
+      setSpecialInstructions('');
+      
+      // Refresh user orders
+      queryClient.invalidateQueries({ queryKey: ['user-orders'] });
+      
+      // Navigate to profile to see order
+      navigate('/profile');
+    } catch (error) {
+      console.error('Error placing order:', error);
+      toast({
+        title: "Failed to place order",
+        description: "There was an error placing your order. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsPlacingOrder(false);
+    }
   };
 
   if (canteenLoading || foodLoading) {
@@ -377,13 +454,40 @@ const CanteenDetail = () => {
                     
                     <Separator className="my-4" />
                     
-                    <div className="flex justify-between items-center mb-4">
-                      <span className="font-semibold">Total</span>
-                      <span className="font-bold text-lg">₹{getCartTotal()}</span>
+                    <div className="space-y-2 mb-4">
+                      <div className="flex justify-between text-sm">
+                        <span>Subtotal</span>
+                        <span>₹{getCartTotal()}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span>Delivery Fee</span>
+                        <span>₹5</span>
+                      </div>
+                      <div className="flex justify-between items-center font-semibold">
+                        <span>Total</span>
+                        <span className="text-lg">₹{getCartTotal() + 5}</span>
+                      </div>
+                    </div>
+
+                    <div className="mb-4">
+                      <label className="text-sm font-medium mb-2 block">Special Instructions</label>
+                      <Textarea
+                        placeholder="Any special requests or notes..."
+                        value={specialInstructions}
+                        onChange={(e) => setSpecialInstructions(e.target.value)}
+                        className="text-sm"
+                        rows={3}
+                      />
                     </div>
                     
-                    <Button className="w-full" disabled={canteen.status === 'closed'}>
-                      {canteen.status === 'closed' ? 'Canteen Closed' : 'Place Order'}
+                    <Button 
+                      className="w-full" 
+                      disabled={canteen?.status === 'closed' || isPlacingOrder}
+                      onClick={handlePlaceOrder}
+                    >
+                      {isPlacingOrder ? 'Placing Order...' : 
+                       canteen?.status === 'closed' ? 'Canteen Closed' : 
+                       `Place Order • ₹${getCartTotal() + 5}`}
                     </Button>
                   </>
                 )}

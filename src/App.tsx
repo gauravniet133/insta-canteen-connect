@@ -10,6 +10,7 @@ import Home from "./pages/Home";
 import Canteens from "./pages/Canteens";
 import CanteenDetail from "./pages/CanteenDetail";
 import Auth from "./pages/Auth";
+import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -27,6 +28,7 @@ const App = () => (
               <Route path="canteens" element={<Canteens />} />
               <Route path="canteen/:id" element={<CanteenDetail />} />
               <Route path="auth" element={<Auth />} />
+              <Route path="profile" element={<Profile />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Route>

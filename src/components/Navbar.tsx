@@ -96,11 +96,11 @@ const Navbar = () => {
                     </p>
                   </div>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate('/profile')}>
                     <User className="mr-2 h-4 w-4" />
                     <span>Profile</span>
                   </DropdownMenuItem>
-                  <DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate('/profile')}>
                     <ShoppingCart className="mr-2 h-4 w-4" />
                     <span>My Orders</span>
                   </DropdownMenuItem>
@@ -156,6 +156,15 @@ const Navbar = () => {
             >
               Canteens
             </Link>
+            {user && (
+              <Link
+                to="/profile"
+                className="block px-3 py-2 text-gray-700 hover:text-orange-500"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                Profile & Orders
+              </Link>
+            )}
             {!user && (
               <div className="pt-2 space-y-2">
                 <Button variant="ghost" className="w-full justify-start" asChild>
