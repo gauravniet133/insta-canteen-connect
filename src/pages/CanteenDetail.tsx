@@ -9,9 +9,9 @@ import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
 import { ArrowLeft, Clock, Star, MapPin, Phone, Search, Plus, Minus, ShoppingCart } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
-import { orderService } from '@/services/orderService';
+import { useCart } from '@/hooks/useCart';
 import { useToast } from '@/hooks/use-toast';
 
 type FoodItem = {
@@ -52,12 +52,10 @@ const CanteenDetail = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
-  const queryClient = useQueryClient();
+  const { addItem, items: cartItems, totalAmount, itemCount, placeOrder, loading: cartLoading } = useCart();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
-  const [cart, setCart] = useState<{ [key: string]: number }>({});
   const [specialInstructions, setSpecialInstructions] = useState('');
-  const [isPlacingOrder, setIsPlacingOrder] = useState(false);
 
   const { data: canteen, isLoading: canteenLoading } = useQuery({
     queryKey: ['canteen', id],
@@ -101,29 +99,38 @@ const CanteenDetail = () => {
     return matchesSearch && matchesCategory && item.is_available;
   });
 
-  const addToCart = (itemId: string) => {
-    setCart(prev => ({
-      ...prev,
-      [itemId]: (prev[itemId] || 0) + 1
-    }));
+  const handleAddToCart = (item: FoodItem, quantity: number = 1) => {
+    if (!user) {
+      toast({
+        title: "Authentication required",
+        description: "Please sign in to add items to cart.",
+        variant: "destructive",
+      });
+      navigate('/auth');
+      return;
+    }
+
+    addItem({
+      food_item_id: item.id,
+      name: item.name,
+      price: item.price,
+      quantity,
+      canteen_id: item.canteen_id,
+      canteen_name: canteen?.name || 'Unknown Canteen'
+    });
   };
 
-  const removeFromCart = (itemId: string) => {
-    setCart(prev => ({
-      ...prev,
-      [itemId]: Math.max(0, (prev[itemId] || 0) - 1)
-    }));
+  const getItemQuantityInCart = (itemId: string) => {
+    const cartItem = cartItems.find(item => item.food_item_id === itemId);
+    return cartItem?.quantity || 0;
   };
 
-  const getCartTotal = () => {
-    return Object.entries(cart).reduce((total, [itemId, quantity]) => {
-      const item = foodItems.find(item => item.id === itemId);
-      return total + (item ? item.price * quantity : 0);
-    }, 0);
+  const getCanteenCartItems = () => {
+    return cartItems.filter(item => item.canteen_id === id);
   };
 
-  const getCartItemCount = () => {
-    return Object.values(cart).reduce((total, quantity) => total + quantity, 0);
+  const getCanteenCartTotal = () => {
+    return getCanteenCartItems().reduce((total, item) => total + (item.price * item.quantity), 0);
   };
 
   const handlePlaceOrder = async () => {
@@ -137,7 +144,8 @@ const CanteenDetail = () => {
       return;
     }
 
-    if (getCartItemCount() === 0) {
+    const canteenItems = getCanteenCartItems();
+    if (canteenItems.length === 0) {
       toast({
         title: "Cart is empty",
         description: "Please add items to your cart before placing an order.",
@@ -146,51 +154,10 @@ const CanteenDetail = () => {
       return;
     }
 
-    setIsPlacingOrder(true);
-
-    try {
-      const orderItems = Object.entries(cart)
-        .filter(([_, quantity]) => quantity > 0)
-        .map(([itemId, quantity]) => {
-          const item = foodItems.find(item => item.id === itemId);
-          return {
-            food_item_id: itemId,
-            quantity,
-            price: item!.price,
-          };
-        });
-
-      const order = await orderService.createOrder({
-        canteen_id: id!,
-        order_items: orderItems,
-        total_amount: getCartTotal(),
-        delivery_fee: 5, // Fixed delivery fee
-        special_instructions: specialInstructions || undefined,
-      });
-
-      toast({
-        title: "Order placed successfully!",
-        description: `Your order #${order.id.slice(0, 8)} has been placed and will be ready in ${canteen?.delivery_time_min}-${canteen?.delivery_time_max} minutes.`,
-      });
-
-      // Clear cart and reset form
-      setCart({});
+    const success = await placeOrder();
+    if (success) {
       setSpecialInstructions('');
-      
-      // Refresh user orders
-      queryClient.invalidateQueries({ queryKey: ['user-orders'] });
-      
-      // Navigate to profile to see order
       navigate('/profile');
-    } catch (error) {
-      console.error('Error placing order:', error);
-      toast({
-        title: "Failed to place order",
-        description: "There was an error placing your order. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsPlacingOrder(false);
     }
   };
 
@@ -314,85 +281,74 @@ const CanteenDetail = () => {
 
             {/* Menu Items */}
             <div className="space-y-4">
-              {filteredItems.map((item) => (
-                <Card key={item.id} className="overflow-hidden">
-                  <CardContent className="p-0">
-                    <div className="flex">
-                      <img 
-                        src={item.image_url || 'https://images.unsplash.com/photo-1565299624946-b28f40a0ca4b?w=200&h=150&fit=crop'} 
-                        alt={item.name}
-                        className="w-32 h-32 object-cover"
-                      />
-                      <div className="flex-1 p-4">
-                        <div className="flex justify-between items-start mb-2">
-                          <h3 className="text-lg font-semibold">{item.name}</h3>
-                          <div className="text-right">
-                            <div className="text-lg font-bold text-green-600">₹{item.price}</div>
-                            {item.preparation_time && (
-                              <div className="text-xs text-gray-500">{item.preparation_time} min</div>
-                            )}
-                          </div>
-                        </div>
-                        
-                        <p className="text-gray-600 text-sm mb-2">{item.description}</p>
-                        
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-2">
-                            {item.is_vegetarian && (
-                              <Badge variant="outline" className="text-green-600 border-green-600">Veg</Badge>
-                            )}
-                            {item.is_vegan && (
-                              <Badge variant="outline" className="text-green-700 border-green-700">Vegan</Badge>
-                            )}
-                            {item.spice_level && item.spice_level > 0 && (
-                              <Badge variant="outline" className="text-red-600 border-red-600">
-                                Spicy {item.spice_level}/5
-                              </Badge>
-                            )}
-                            {item.rating && (
-                              <div className="flex items-center">
-                                <Star className="h-3 w-3 fill-yellow-400 text-yellow-400 mr-1" />
-                                <span className="text-xs">{item.rating}</span>
-                              </div>
-                            )}
+              {filteredItems.map((item) => {
+                const quantityInCart = getItemQuantityInCart(item.id);
+                
+                return (
+                  <Card key={item.id} className="overflow-hidden">
+                    <CardContent className="p-0">
+                      <div className="flex">
+                        <img 
+                          src={item.image_url || 'https://images.unsplash.com/photo-1565299624946-b28f40a0ca4b?w=200&h=150&fit=crop'} 
+                          alt={item.name}
+                          className="w-32 h-32 object-cover"
+                        />
+                        <div className="flex-1 p-4">
+                          <div className="flex justify-between items-start mb-2">
+                            <h3 className="text-lg font-semibold">{item.name}</h3>
+                            <div className="text-right">
+                              <div className="text-lg font-bold text-green-600">₹{item.price}</div>
+                              {item.preparation_time && (
+                                <div className="text-xs text-gray-500">{item.preparation_time} min</div>
+                              )}
+                            </div>
                           </div>
                           
-                          <div className="flex items-center space-x-2">
-                            {cart[item.id] > 0 ? (
-                              <div className="flex items-center space-x-2">
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => removeFromCart(item.id)}
-                                >
-                                  <Minus className="h-3 w-3" />
-                                </Button>
-                                <span className="w-8 text-center">{cart[item.id]}</span>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => addToCart(item.id)}
-                                >
-                                  <Plus className="h-3 w-3" />
-                                </Button>
-                              </div>
-                            ) : (
+                          <p className="text-gray-600 text-sm mb-2">{item.description}</p>
+                          
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-2">
+                              {item.is_vegetarian && (
+                                <Badge variant="outline" className="text-green-600 border-green-600">Veg</Badge>
+                              )}
+                              {item.is_vegan && (
+                                <Badge variant="outline" className="text-green-700 border-green-700">Vegan</Badge>
+                              )}
+                              {item.spice_level && item.spice_level > 0 && (
+                                <Badge variant="outline" className="text-red-600 border-red-600">
+                                  Spicy {item.spice_level}/5
+                                </Badge>
+                              )}
+                              {item.rating && (
+                                <div className="flex items-center">
+                                  <Star className="h-3 w-3 fill-yellow-400 text-yellow-400 mr-1" />
+                                  <span className="text-xs">{item.rating}</span>
+                                </div>
+                              )}
+                            </div>
+                            
+                            <div className="flex items-center space-x-2">
+                              {quantityInCart > 0 ? (
+                                <div className="flex items-center space-x-2">
+                                  <span className="text-sm text-gray-600">In cart: {quantityInCart}</span>
+                                </div>
+                              ) : null}
                               <Button
                                 size="sm"
-                                onClick={() => addToCart(item.id)}
-                                disabled={canteen.status === 'closed'}
+                                onClick={() => handleAddToCart(item)}
+                                disabled={canteen?.status === 'closed'}
                               >
                                 <Plus className="h-4 w-4 mr-1" />
                                 Add
                               </Button>
-                            )}
+                            </div>
                           </div>
                         </div>
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
 
             {filteredItems.length === 0 && (
@@ -408,48 +364,25 @@ const CanteenDetail = () => {
               <CardContent className="p-6">
                 <h3 className="text-lg font-semibold mb-4 flex items-center">
                   <ShoppingCart className="h-5 w-5 mr-2" />
-                  Your Order ({getCartItemCount()})
+                  Your Order ({itemCount})
                 </h3>
                 
-                {getCartItemCount() === 0 ? (
+                {itemCount === 0 ? (
                   <p className="text-gray-500 text-center py-8">Your cart is empty</p>
                 ) : (
                   <>
                     <div className="space-y-3 mb-4">
-                      {Object.entries(cart)
-                        .filter(([_, quantity]) => quantity > 0)
-                        .map(([itemId, quantity]) => {
-                          const item = foodItems.find(item => item.id === itemId);
-                          if (!item) return null;
-                          
-                          return (
-                            <div key={itemId} className="flex justify-between items-center">
-                              <div className="flex-1">
-                                <div className="text-sm font-medium">{item.name}</div>
-                                <div className="text-xs text-gray-500">₹{item.price} each</div>
-                              </div>
-                              <div className="flex items-center space-x-2">
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() => removeFromCart(itemId)}
-                                  className="h-6 w-6 p-0"
-                                >
-                                  <Minus className="h-3 w-3" />
-                                </Button>
-                                <span className="w-6 text-center text-sm">{quantity}</span>
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() => addToCart(itemId)}
-                                  className="h-6 w-6 p-0"
-                                >
-                                  <Plus className="h-3 w-3" />
-                                </Button>
-                              </div>
-                            </div>
-                          );
-                        })}
+                      {getCanteenCartItems().map((cartItem) => (
+                        <div key={cartItem.id} className="flex justify-between items-center">
+                          <div className="flex-1">
+                            <div className="text-sm font-medium">{cartItem.name}</div>
+                            <div className="text-xs text-gray-500">₹{cartItem.price} each</div>
+                          </div>
+                          <div className="text-sm">
+                            <span className="font-medium">{cartItem.quantity}x</span>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                     
                     <Separator className="my-4" />
@@ -457,7 +390,7 @@ const CanteenDetail = () => {
                     <div className="space-y-2 mb-4">
                       <div className="flex justify-between text-sm">
                         <span>Subtotal</span>
-                        <span>₹{getCartTotal()}</span>
+                        <span>₹{getCanteenCartTotal()}</span>
                       </div>
                       <div className="flex justify-between text-sm">
                         <span>Delivery Fee</span>
@@ -465,7 +398,7 @@ const CanteenDetail = () => {
                       </div>
                       <div className="flex justify-between items-center font-semibold">
                         <span>Total</span>
-                        <span className="text-lg">₹{getCartTotal() + 5}</span>
+                        <span className="text-lg">₹{getCanteenCartTotal() + 5}</span>
                       </div>
                     </div>
 
@@ -482,12 +415,12 @@ const CanteenDetail = () => {
                     
                     <Button 
                       className="w-full" 
-                      disabled={canteen?.status === 'closed' || isPlacingOrder}
+                      disabled={canteen?.status === 'closed' || cartLoading}
                       onClick={handlePlaceOrder}
                     >
-                      {isPlacingOrder ? 'Placing Order...' : 
+                      {cartLoading ? 'Placing Order...' : 
                        canteen?.status === 'closed' ? 'Canteen Closed' : 
-                       `Place Order • ₹${getCartTotal() + 5}`}
+                       `Place Order • ₹${getCanteenCartTotal() + 5}`}
                     </Button>
                   </>
                 )}

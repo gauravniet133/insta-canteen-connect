@@ -1,7 +1,7 @@
-
 import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+import { orderService } from '@/services/orderService';
 
 type CartItem = {
   id: string;
@@ -135,13 +135,17 @@ export const CartProvider = ({ children }: CartProviderProps) => {
       for (const [canteenId, canteenItems] of Object.entries(itemsByCanteen)) {
         const orderTotal = canteenItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
         
-        // This would typically make API calls to create orders
-        // For now, we'll simulate the order creation
-        console.log('Creating order:', {
+        const orderItems = canteenItems.map(item => ({
+          food_item_id: item.food_item_id,
+          quantity: item.quantity,
+          price: item.price,
+        }));
+
+        await orderService.createOrder({
           canteen_id: canteenId,
-          items: canteenItems,
-          total: orderTotal,
-          user_id: user.id
+          order_items: orderItems,
+          total_amount: orderTotal + 5, // Including delivery fee
+          delivery_fee: 5,
         });
       }
 
