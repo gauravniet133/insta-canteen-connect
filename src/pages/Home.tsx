@@ -12,16 +12,19 @@ const Home = () => {
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
       <HeroSection />
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 lg:py-16">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16 lg:py-20">
         {/* Order Tracking Section - Only show for authenticated users */}
         {user && (
-          <div className="mb-12 sm:mb-16">
+          <div className="mb-16 sm:mb-20">
             <OrderTracking />
           </div>
         )}
 
         <FeaturedCanteens />
-        <FeaturesSection />
+        
+        <div className="mt-16 sm:mt-20">
+          <FeaturesSection />
+        </div>
       </div>
     </div>
   );
