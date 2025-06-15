@@ -14,6 +14,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { ChefHat, User, LogOut, ShoppingCart, Menu, X } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+import OrderNotifications from './OrderNotifications';
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -75,6 +76,8 @@ const Navbar = () => {
 
           {/* User Menu */}
           <div className="flex items-center space-x-4">
+            {user && <OrderNotifications />}
+            
             {user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>

@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Clock, CheckCircle, Truck, ChefHat, Package } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useToast } from '@/hooks/use-toast';
 
 type Order = {
   id: string;
@@ -25,29 +26,49 @@ type Order = {
 
 const OrderTracking = () => {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [activeOrders, setActiveOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+      setLoading(false);
+      return;
+    }
 
     // Fetch active orders (not completed or cancelled)
     const fetchActiveOrders = async () => {
-      const { data, error } = await supabase
-        .from('orders')
-        .select(`
-          *,
-          canteens (name),
-          order_items (
-            quantity,
-            food_items (name)
-          )
-        `)
-        .eq('user_id', user.id)
-        .not('status', 'in', '(completed,cancelled)')
-        .order('created_at', { ascending: false });
+      try {
+        console.log('Fetching active orders for user:', user.id);
+        const { data, error } = await supabase
+          .from('orders')
+          .select(`
+            *,
+            canteens (name),
+            order_items (
+              quantity,
+              food_items (name)
+            )
+          `)
+          .eq('user_id', user.id)
+          .not('status', 'in', '(completed,cancelled)')
+          .order('created_at', { ascending: false });
 
-      if (data && !error) {
-        setActiveOrders(data);
+        if (error) {
+          console.error('Error fetching orders:', error);
+          toast({
+            title: "Error fetching orders",
+            description: "Unable to load your active orders",
+            variant: "destructive",
+          });
+        } else {
+          console.log('Fetched orders:', data);
+          setActiveOrders(data || []);
+        }
+      } catch (error) {
+        console.error('Unexpected error:', error);
+      } finally {
+        setLoading(false);
       }
     };
 
@@ -66,6 +87,20 @@ const OrderTracking = () => {
         },
         (payload) => {
           console.log('Order status updated:', payload);
+          
+          // Show notification for status updates
+          if (payload.new && payload.old) {
+            const newStatus = payload.new.status;
+            const oldStatus = payload.old.status;
+            
+            if (newStatus !== oldStatus) {
+              toast({
+                title: "Order Status Updated",
+                description: `Your order is now ${newStatus}`,
+              });
+            }
+          }
+          
           fetchActiveOrders(); // Refresh the orders
         }
       )
@@ -74,7 +109,7 @@ const OrderTracking = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user]);
+  }, [user, toast]);
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -99,17 +134,32 @@ const OrderTracking = () => {
   };
 
   const getEstimatedTime = (estimatedDeliveryTime: string) => {
+    if (!estimatedDeliveryTime) return 0;
     const now = new Date();
     const deliveryTime = new Date(estimatedDeliveryTime);
     const diffInMinutes = Math.max(0, Math.ceil((deliveryTime.getTime() - now.getTime()) / (1000 * 60)));
     return diffInMinutes;
   };
 
-  const getProgressPercentage = (status: string) => {
-    const statusSteps = ['pending', 'confirmed', 'preparing', 'ready'];
-    const currentIndex = statusSteps.indexOf(status);
-    return currentIndex >= 0 ? ((currentIndex + 1) / statusSteps.length) * 100 : 0;
-  };
+  if (loading) {
+    return (
+      <Card className="shadow-sm">
+        <CardHeader className="pb-4">
+          <CardTitle className="text-xl font-semibold text-gray-900">Order Tracking</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-12">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500 mx-auto mb-4"></div>
+            <p className="text-gray-500">Loading your orders...</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!user) {
+    return null;
+  }
 
   if (activeOrders.length === 0) {
     return (
