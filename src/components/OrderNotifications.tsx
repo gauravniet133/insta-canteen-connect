@@ -4,6 +4,9 @@ import { Bell, X } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
+import { useToast } from '@/hooks/use-toast';
 
 type Notification = {
   id: string;
@@ -12,9 +15,12 @@ type Notification = {
   timestamp: Date;
   read: boolean;
   type: 'order_update' | 'delivery' | 'promotion';
+  order_id?: string;
 };
 
 const OrderNotifications = () => {
+  const { user } = useAuth();
+  const { toast } = useToast();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isOpen, setIsOpen] = useState(false);
 
@@ -33,38 +39,113 @@ const OrderNotifications = () => {
   const unreadCount = notifications.filter(n => !n.read).length;
 
   const formatTimeAgo = (date: Date) => {
-    const now = new Date();
-    const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
-    
-    if (diffInMinutes < 1) return 'Just now';
-    if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
-    if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h ago`;
-    return `${Math.floor(diffInMinutes / 1440)}d ago`;
+    try {
+      const now = new Date();
+      const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
+      
+      if (diffInMinutes < 1) return 'Just now';
+      if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
+      if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h ago`;
+      return `${Math.floor(diffInMinutes / 1440)}d ago`;
+    } catch (error) {
+      return 'Recently';
+    }
+  };
+
+  const generateNotificationFromOrder = (order: any, event: string): Notification => {
+    const statusMessages = {
+      confirmed: { title: 'Order Confirmed', message: `Your order from ${order.canteens?.name || 'canteen'} has been confirmed` },
+      preparing: { title: 'Order Being Prepared', message: `Your order is being prepared` },
+      ready: { title: 'Order Ready', message: `Your order is ready for pickup!` },
+      completed: { title: 'Order Completed', message: `Your order has been delivered` },
+      cancelled: { title: 'Order Cancelled', message: `Your order has been cancelled` }
+    };
+
+    const statusInfo = statusMessages[order.status as keyof typeof statusMessages] || 
+                      { title: 'Order Update', message: `Order status: ${order.status}` };
+
+    return {
+      id: `${order.id}-${Date.now()}`,
+      title: statusInfo.title,
+      message: statusInfo.message,
+      timestamp: new Date(),
+      read: false,
+      type: 'order_update',
+      order_id: order.id
+    };
   };
 
   useEffect(() => {
-    // Mock notifications for demo - in real app this would connect to your notification system
-    const mockNotifications: Notification[] = [
-      {
-        id: '1',
-        title: 'Order Confirmed',
-        message: 'Your order from Central Canteen has been confirmed',
-        timestamp: new Date(Date.now() - 5 * 60 * 1000),
-        read: false,
-        type: 'order_update'
-      },
-      {
-        id: '2',
-        title: 'Order Ready',
-        message: 'Your order is ready for pickup!',
-        timestamp: new Date(Date.now() - 30 * 60 * 1000),
-        read: false,
-        type: 'delivery'
-      }
-    ];
+    if (!user) return;
 
-    setNotifications(mockNotifications);
-  }, []);
+    // Fetch recent order updates as notifications
+    const fetchRecentOrderUpdates = async () => {
+      try {
+        const { data: orders, error } = await supabase
+          .from('orders')
+          .select(`
+            *,
+            canteens (name)
+          `)
+          .eq('user_id', user.id)
+          .not('status', 'eq', 'pending')
+          .order('updated_at', { ascending: false })
+          .limit(5);
+
+        if (error) throw error;
+
+        const orderNotifications: Notification[] = orders?.map(order => 
+          generateNotificationFromOrder(order, 'update')
+        ) || [];
+
+        setNotifications(orderNotifications);
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: "Failed to load notifications",
+          variant: "destructive",
+        });
+      }
+    };
+
+    fetchRecentOrderUpdates();
+
+    // Set up real-time subscription for order updates
+    const channel = supabase
+      .channel('order-notifications')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'orders',
+          filter: `user_id=eq.${user.id}`
+        },
+        (payload) => {
+          if (payload.new && payload.old) {
+            const newOrder = payload.new;
+            const oldOrder = payload.old;
+            
+            if (newOrder.status !== oldOrder.status) {
+              const notification = generateNotificationFromOrder(newOrder, 'status_change');
+              setNotifications(prev => [notification, ...prev.slice(0, 9)]); // Keep only 10 most recent
+              
+              toast({
+                title: notification.title,
+                description: notification.message,
+              });
+            }
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user, toast]);
+
+  if (!user) return null;
 
   return (
     <div className="relative">
@@ -77,7 +158,7 @@ const OrderNotifications = () => {
         <Bell className="h-5 w-5" />
         {unreadCount > 0 && (
           <Badge className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center text-xs bg-red-500 hover:bg-red-600 border-0">
-            {unreadCount}
+            {unreadCount > 99 ? '99+' : unreadCount}
           </Badge>
         )}
       </Button>

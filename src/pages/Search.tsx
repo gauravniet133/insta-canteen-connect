@@ -6,10 +6,11 @@ import { useSearch } from '@/hooks/useSearch';
 import { useSort } from '@/hooks/useSort';
 import SearchFilters from '@/components/SearchFilters';
 import SortOptions from '@/components/SortOptions';
-import FoodItemCard from '@/components/FoodItemCard';
+import FoodItemCar from '@/components/FoodItemCard';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import { Card, CardContent } from '@/components/ui/card';
 import { Search as SearchIcon } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 interface FoodItem {
   id: string;
@@ -34,7 +35,7 @@ const Search = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [foodItems, setFoodItems] = useState<FoodItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
 
   const {
     filters,
@@ -59,6 +60,7 @@ const Search = () => {
   useEffect(() => {
     const fetchFoodItems = async () => {
       try {
+        setLoading(true);
         const { data, error } = await supabase
           .from('food_items')
           .select(`
@@ -70,15 +72,19 @@ const Search = () => {
         if (error) throw error;
         setFoodItems(data || []);
       } catch (err) {
-        console.error('Error fetching food items:', err);
-        setError('Failed to load food items');
+        const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
+        toast({
+          title: "Error",
+          description: "Failed to load food items",
+          variant: "destructive",
+        });
       } finally {
         setLoading(false);
       }
     };
 
     fetchFoodItems();
-  }, []);
+  }, [toast]);
 
   // Initialize search query from URL params
   useEffect(() => {
@@ -86,33 +92,21 @@ const Search = () => {
     if (query !== filters.searchQuery) {
       updateFilters({ searchQuery: query });
     }
-  }, [searchParams]);
+  }, [searchParams, filters.searchQuery, updateFilters]);
 
   // Update URL when search query changes
   useEffect(() => {
-    if (filters.searchQuery) {
-      setSearchParams({ q: filters.searchQuery });
-    } else {
-      setSearchParams({});
+    const params = new URLSearchParams();
+    if (filters.searchQuery.trim()) {
+      params.set('q', filters.searchQuery.trim());
     }
+    setSearchParams(params);
   }, [filters.searchQuery, setSearchParams]);
 
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <LoadingSpinner />
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <Card className="max-w-md mx-auto">
-          <CardContent className="text-center py-8">
-            <p className="text-red-600 mb-4">{error}</p>
-          </CardContent>
-        </Card>
       </div>
     );
   }

@@ -27,12 +27,14 @@ export const useOrderManagement = () => {
   const [activeOrders, setActiveOrders] = useState<Order[]>([]);
   const [orderHistory, setOrderHistory] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchActiveOrders = async () => {
     if (!user) return;
 
     try {
-      const { data, error } = await supabase
+      setError(null);
+      const { data, error: fetchError } = await supabase
         .from('orders')
         .select(`
           *,
@@ -46,10 +48,11 @@ export const useOrderManagement = () => {
         .not('status', 'in', '(completed,cancelled)')
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (fetchError) throw fetchError;
       setActiveOrders(data || []);
-    } catch (error) {
-      console.error('Error fetching active orders:', error);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
+      setError(errorMessage);
       toast({
         title: "Error",
         description: "Unable to load your active orders",
@@ -62,7 +65,7 @@ export const useOrderManagement = () => {
     if (!user) return;
 
     try {
-      const { data, error } = await supabase
+      const { data, error: fetchError } = await supabase
         .from('orders')
         .select(`
           *,
@@ -77,20 +80,27 @@ export const useOrderManagement = () => {
         .order('created_at', { ascending: false })
         .limit(10);
 
-      if (error) throw error;
+      if (fetchError) throw fetchError;
       setOrderHistory(data || []);
-    } catch (error) {
-      console.error('Error fetching order history:', error);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
+      toast({
+        title: "Error",
+        description: "Unable to load order history",
+        variant: "destructive",
+      });
     }
   };
 
   const cancelOrder = async (orderId: string) => {
+    if (!user) return;
+
     try {
       const { error } = await supabase
         .from('orders')
         .update({ status: 'cancelled' })
         .eq('id', orderId)
-        .eq('user_id', user?.id);
+        .eq('user_id', user.id);
 
       if (error) throw error;
 
@@ -99,9 +109,10 @@ export const useOrderManagement = () => {
         description: "Your order has been successfully cancelled",
       });
 
-      fetchActiveOrders();
-    } catch (error) {
-      console.error('Error cancelling order:', error);
+      await fetchActiveOrders();
+      await fetchOrderHistory();
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
       toast({
         title: "Error",
         description: "Unable to cancel the order",
@@ -111,8 +122,9 @@ export const useOrderManagement = () => {
   };
 
   const reorderItems = async (orderId: string) => {
+    if (!user) return;
+
     try {
-      // Fetch the original order items
       const { data: orderItems, error } = await supabase
         .from('order_items')
         .select('food_item_id, quantity')
@@ -120,16 +132,14 @@ export const useOrderManagement = () => {
 
       if (error) throw error;
 
-      // You would implement the reorder logic here
-      // For now, just show a success message
       toast({
         title: "Reorder Initiated",
         description: "Items have been added to your cart",
       });
 
       return orderItems;
-    } catch (error) {
-      console.error('Error reordering:', error);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
       toast({
         title: "Error",
         description: "Unable to reorder items",
@@ -164,14 +174,11 @@ export const useOrderManagement = () => {
           filter: `user_id=eq.${user.id}`
         },
         (payload) => {
-          console.log('Order updated:', payload);
-          
           if (payload.new && payload.old) {
             const newStatus = payload.new.status;
             const oldStatus = payload.old.status;
             
             if (newStatus !== oldStatus) {
-              // Show appropriate notification based on status
               const statusMessages = {
                 confirmed: "Your order has been confirmed!",
                 preparing: "Your order is being prepared",
@@ -202,6 +209,7 @@ export const useOrderManagement = () => {
     activeOrders,
     orderHistory,
     loading,
+    error,
     cancelOrder,
     reorderItems,
     refreshOrders: () => {

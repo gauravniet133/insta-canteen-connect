@@ -29,50 +29,49 @@ const OrderTracking = () => {
   const { toast } = useToast();
   const [activeOrders, setActiveOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const fetchActiveOrders = async () => {
     if (!user) {
       setLoading(false);
       return;
     }
 
-    // Fetch active orders (not completed or cancelled)
-    const fetchActiveOrders = async () => {
-      try {
-        console.log('Fetching active orders for user:', user.id);
-        const { data, error } = await supabase
-          .from('orders')
-          .select(`
-            *,
-            canteens (name),
-            order_items (
-              quantity,
-              food_items (name)
-            )
-          `)
-          .eq('user_id', user.id)
-          .not('status', 'in', '(completed,cancelled)')
-          .order('created_at', { ascending: false });
+    try {
+      setError(null);
+      const { data, error: fetchError } = await supabase
+        .from('orders')
+        .select(`
+          *,
+          canteens (name),
+          order_items (
+            quantity,
+            food_items (name)
+          )
+        `)
+        .eq('user_id', user.id)
+        .not('status', 'in', '(completed,cancelled)')
+        .order('created_at', { ascending: false });
 
-        if (error) {
-          console.error('Error fetching orders:', error);
-          toast({
-            title: "Error fetching orders",
-            description: "Unable to load your active orders",
-            variant: "destructive",
-          });
-        } else {
-          console.log('Fetched orders:', data);
-          setActiveOrders(data || []);
-        }
-      } catch (error) {
-        console.error('Unexpected error:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
+      if (fetchError) throw fetchError;
+      setActiveOrders(data || []);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
+      setError('Unable to load your active orders');
+      toast({
+        title: "Error fetching orders",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     fetchActiveOrders();
+
+    if (!user) return;
 
     // Set up real-time subscription for order updates
     const channel = supabase
@@ -86,9 +85,6 @@ const OrderTracking = () => {
           filter: `user_id=eq.${user.id}`
         },
         (payload) => {
-          console.log('Order status updated:', payload);
-          
-          // Show notification for status updates
           if (payload.new && payload.old) {
             const newStatus = payload.new.status;
             const oldStatus = payload.old.status;
@@ -101,7 +97,7 @@ const OrderTracking = () => {
             }
           }
           
-          fetchActiveOrders(); // Refresh the orders
+          fetchActiveOrders();
         }
       )
       .subscribe();
@@ -112,33 +108,37 @@ const OrderTracking = () => {
   }, [user, toast]);
 
   const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'pending': return <Clock className="h-5 w-5" />;
-      case 'confirmed': return <CheckCircle className="h-5 w-5" />;
-      case 'preparing': return <ChefHat className="h-5 w-5" />;
-      case 'ready': return <Package className="h-5 w-5" />;
-      case 'completed': return <Truck className="h-5 w-5" />;
-      default: return <Clock className="h-5 w-5" />;
-    }
+    const icons = {
+      pending: <Clock className="h-5 w-5" />,
+      confirmed: <CheckCircle className="h-5 w-5" />,
+      preparing: <ChefHat className="h-5 w-5" />,
+      ready: <Package className="h-5 w-5" />,
+      completed: <Truck className="h-5 w-5" />
+    };
+    return icons[status as keyof typeof icons] || <Clock className="h-5 w-5" />;
   };
 
   const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'pending': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case 'confirmed': return 'bg-blue-100 text-blue-800 border-blue-200';
-      case 'preparing': return 'bg-orange-100 text-orange-800 border-orange-200';
-      case 'ready': return 'bg-green-100 text-green-800 border-green-200';
-      case 'completed': return 'bg-gray-100 text-gray-800 border-gray-200';
-      default: return 'bg-gray-100 text-gray-800 border-gray-200';
-    }
+    const colors = {
+      pending: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+      confirmed: 'bg-blue-100 text-blue-800 border-blue-200',
+      preparing: 'bg-orange-100 text-orange-800 border-orange-200',
+      ready: 'bg-green-100 text-green-800 border-green-200',
+      completed: 'bg-gray-100 text-gray-800 border-gray-200'
+    };
+    return colors[status as keyof typeof colors] || 'bg-gray-100 text-gray-800 border-gray-200';
   };
 
   const getEstimatedTime = (estimatedDeliveryTime: string) => {
     if (!estimatedDeliveryTime) return 0;
-    const now = new Date();
-    const deliveryTime = new Date(estimatedDeliveryTime);
-    const diffInMinutes = Math.max(0, Math.ceil((deliveryTime.getTime() - now.getTime()) / (1000 * 60)));
-    return diffInMinutes;
+    try {
+      const now = new Date();
+      const deliveryTime = new Date(estimatedDeliveryTime);
+      const diffInMinutes = Math.max(0, Math.ceil((deliveryTime.getTime() - now.getTime()) / (1000 * 60)));
+      return diffInMinutes;
+    } catch {
+      return 0;
+    }
   };
 
   if (loading) {
@@ -159,6 +159,30 @@ const OrderTracking = () => {
 
   if (!user) {
     return null;
+  }
+
+  if (error) {
+    return (
+      <Card className="shadow-sm">
+        <CardHeader className="pb-4">
+          <CardTitle className="text-xl font-semibold text-gray-900">Order Tracking</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-12">
+            <div className="w-20 h-20 mx-auto mb-4 bg-red-100 rounded-full flex items-center justify-center">
+              <Package className="h-8 w-8 text-red-400" />
+            </div>
+            <p className="text-red-500 text-lg mb-2">{error}</p>
+            <button 
+              onClick={fetchActiveOrders}
+              className="text-orange-600 hover:text-orange-700 font-medium"
+            >
+              Try Again
+            </button>
+          </div>
+        </CardContent>
+      </Card>
+    );
   }
 
   if (activeOrders.length === 0) {
