@@ -23,11 +23,11 @@ const App = () => (
   <ErrorBoundary>
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <CartProvider>
-          <TooltipProvider>
-            <Toaster />
-            <Sonner />
-            <BrowserRouter>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <CartProvider>
               <Routes>
                 <Route path="/" element={<Layout />}>
                   <Route index element={<Home />} />
@@ -41,9 +41,9 @@ const App = () => (
                 </Route>
               </Routes>
               <Cart />
-            </BrowserRouter>
-          </TooltipProvider>
-        </CartProvider>
+            </CartProvider>
+          </BrowserRouter>
+        </TooltipProvider>
       </AuthProvider>
     </QueryClientProvider>
   </ErrorBoundary>
