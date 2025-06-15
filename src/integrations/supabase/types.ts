@@ -9,7 +9,356 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      canteen_cuisines: {
+        Row: {
+          canteen_id: string | null
+          cuisine_name: string
+          id: string
+        }
+        Insert: {
+          canteen_id?: string | null
+          cuisine_name: string
+          id?: string
+        }
+        Update: {
+          canteen_id?: string | null
+          cuisine_name?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "canteen_cuisines_canteen_id_fkey"
+            columns: ["canteen_id"]
+            isOneToOne: false
+            referencedRelation: "canteens"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      canteens: {
+        Row: {
+          closing_time: string | null
+          created_at: string | null
+          delivery_time_max: number | null
+          delivery_time_min: number | null
+          description: string | null
+          email: string | null
+          id: string
+          image_url: string | null
+          location: string
+          name: string
+          opening_time: string | null
+          owner_id: string | null
+          phone: string | null
+          rating: number | null
+          status: Database["public"]["Enums"]["canteen_status"] | null
+          total_reviews: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          closing_time?: string | null
+          created_at?: string | null
+          delivery_time_max?: number | null
+          delivery_time_min?: number | null
+          description?: string | null
+          email?: string | null
+          id?: string
+          image_url?: string | null
+          location: string
+          name: string
+          opening_time?: string | null
+          owner_id?: string | null
+          phone?: string | null
+          rating?: number | null
+          status?: Database["public"]["Enums"]["canteen_status"] | null
+          total_reviews?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          closing_time?: string | null
+          created_at?: string | null
+          delivery_time_max?: number | null
+          delivery_time_min?: number | null
+          description?: string | null
+          email?: string | null
+          id?: string
+          image_url?: string | null
+          location?: string
+          name?: string
+          opening_time?: string | null
+          owner_id?: string | null
+          phone?: string | null
+          rating?: number | null
+          status?: Database["public"]["Enums"]["canteen_status"] | null
+          total_reviews?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "canteens_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      food_items: {
+        Row: {
+          canteen_id: string | null
+          category: string | null
+          created_at: string | null
+          description: string | null
+          id: string
+          image_url: string | null
+          is_available: boolean | null
+          is_vegan: boolean | null
+          is_vegetarian: boolean | null
+          name: string
+          preparation_time: number | null
+          price: number
+          rating: number | null
+          spice_level: number | null
+          total_reviews: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          canteen_id?: string | null
+          category?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          is_available?: boolean | null
+          is_vegan?: boolean | null
+          is_vegetarian?: boolean | null
+          name: string
+          preparation_time?: number | null
+          price: number
+          rating?: number | null
+          spice_level?: number | null
+          total_reviews?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          canteen_id?: string | null
+          category?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          is_available?: boolean | null
+          is_vegan?: boolean | null
+          is_vegetarian?: boolean | null
+          name?: string
+          preparation_time?: number | null
+          price?: number
+          rating?: number | null
+          spice_level?: number | null
+          total_reviews?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "food_items_canteen_id_fkey"
+            columns: ["canteen_id"]
+            isOneToOne: false
+            referencedRelation: "canteens"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      order_items: {
+        Row: {
+          food_item_id: string | null
+          id: string
+          order_id: string | null
+          price: number
+          quantity: number
+          special_notes: string | null
+        }
+        Insert: {
+          food_item_id?: string | null
+          id?: string
+          order_id?: string | null
+          price: number
+          quantity?: number
+          special_notes?: string | null
+        }
+        Update: {
+          food_item_id?: string | null
+          id?: string
+          order_id?: string | null
+          price?: number
+          quantity?: number
+          special_notes?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_items_food_item_id_fkey"
+            columns: ["food_item_id"]
+            isOneToOne: false
+            referencedRelation: "food_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      orders: {
+        Row: {
+          actual_delivery_time: string | null
+          canteen_id: string | null
+          created_at: string | null
+          delivery_fee: number | null
+          estimated_delivery_time: string | null
+          id: string
+          special_instructions: string | null
+          status: Database["public"]["Enums"]["order_status"] | null
+          total_amount: number
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          actual_delivery_time?: string | null
+          canteen_id?: string | null
+          created_at?: string | null
+          delivery_fee?: number | null
+          estimated_delivery_time?: string | null
+          id?: string
+          special_instructions?: string | null
+          status?: Database["public"]["Enums"]["order_status"] | null
+          total_amount: number
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          actual_delivery_time?: string | null
+          canteen_id?: string | null
+          created_at?: string | null
+          delivery_fee?: number | null
+          estimated_delivery_time?: string | null
+          id?: string
+          special_instructions?: string | null
+          status?: Database["public"]["Enums"]["order_status"] | null
+          total_amount?: number
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orders_canteen_id_fkey"
+            columns: ["canteen_id"]
+            isOneToOne: false
+            referencedRelation: "canteens"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          created_at: string | null
+          email: string
+          full_name: string
+          id: string
+          phone: string | null
+          role: Database["public"]["Enums"]["user_role"] | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          email: string
+          full_name: string
+          id: string
+          phone?: string | null
+          role?: Database["public"]["Enums"]["user_role"] | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          email?: string
+          full_name?: string
+          id?: string
+          phone?: string | null
+          role?: Database["public"]["Enums"]["user_role"] | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      reviews: {
+        Row: {
+          canteen_id: string | null
+          comment: string | null
+          created_at: string | null
+          food_item_id: string | null
+          id: string
+          order_id: string | null
+          rating: number
+          user_id: string | null
+        }
+        Insert: {
+          canteen_id?: string | null
+          comment?: string | null
+          created_at?: string | null
+          food_item_id?: string | null
+          id?: string
+          order_id?: string | null
+          rating: number
+          user_id?: string | null
+        }
+        Update: {
+          canteen_id?: string | null
+          comment?: string | null
+          created_at?: string | null
+          food_item_id?: string | null
+          id?: string
+          order_id?: string | null
+          rating?: number
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reviews_canteen_id_fkey"
+            columns: ["canteen_id"]
+            isOneToOne: false
+            referencedRelation: "canteens"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reviews_food_item_id_fkey"
+            columns: ["food_item_id"]
+            isOneToOne: false
+            referencedRelation: "food_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reviews_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reviews_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -18,7 +367,15 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      canteen_status: "open" | "closed" | "busy"
+      order_status:
+        | "pending"
+        | "confirmed"
+        | "preparing"
+        | "ready"
+        | "completed"
+        | "cancelled"
+      user_role: "student" | "faculty" | "canteen_owner" | "admin"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -133,6 +490,17 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      canteen_status: ["open", "closed", "busy"],
+      order_status: [
+        "pending",
+        "confirmed",
+        "preparing",
+        "ready",
+        "completed",
+        "cancelled",
+      ],
+      user_role: ["student", "faculty", "canteen_owner", "admin"],
+    },
   },
 } as const

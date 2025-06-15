@@ -1,0 +1,399 @@
+
+import { useState } from 'react';
+import { useParams, Link } from 'react-router-dom';
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Separator } from '@/components/ui/separator';
+import { ArrowLeft, Clock, Star, MapPin, Phone, Search, Plus, Minus, ShoppingCart } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { useQuery } from '@tanstack/react-query';
+
+type FoodItem = {
+  id: string;
+  name: string;
+  description: string | null;
+  price: number;
+  image_url: string | null;
+  category: string | null;
+  is_available: boolean | null;
+  is_vegetarian: boolean | null;
+  is_vegan: boolean | null;
+  spice_level: number | null;
+  rating: number | null;
+  total_reviews: number | null;
+  preparation_time: number | null;
+};
+
+type Canteen = {
+  id: string;
+  name: string;
+  description: string | null;
+  image_url: string | null;
+  location: string;
+  phone: string | null;
+  status: 'open' | 'closed' | 'busy';
+  rating: number | null;
+  total_reviews: number | null;
+  delivery_time_min: number | null;
+  delivery_time_max: number | null;
+  opening_time: string | null;
+  closing_time: string | null;
+  canteen_cuisines: { cuisine_name: string }[];
+};
+
+const CanteenDetail = () => {
+  const { id } = useParams<{ id: string }>();
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [cart, setCart] = useState<{ [key: string]: number }>({});
+
+  const { data: canteen, isLoading: canteenLoading } = useQuery({
+    queryKey: ['canteen', id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('canteens')
+        .select(`
+          *,
+          canteen_cuisines (
+            cuisine_name
+          )
+        `)
+        .eq('id', id)
+        .single();
+      
+      if (error) throw error;
+      return data as Canteen;
+    },
+    enabled: !!id
+  });
+
+  const { data: foodItems = [], isLoading: foodLoading } = useQuery({
+    queryKey: ['food-items', id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('food_items')
+        .select('*')
+        .eq('canteen_id', id);
+      
+      if (error) throw error;
+      return data as FoodItem[];
+    },
+    enabled: !!id
+  });
+
+  const categories = [...new Set(foodItems.map(item => item.category).filter(Boolean))];
+  
+  const filteredItems = foodItems.filter(item => {
+    const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCategory = selectedCategory === 'all' || item.category === selectedCategory;
+    return matchesSearch && matchesCategory && item.is_available;
+  });
+
+  const addToCart = (itemId: string) => {
+    setCart(prev => ({
+      ...prev,
+      [itemId]: (prev[itemId] || 0) + 1
+    }));
+  };
+
+  const removeFromCart = (itemId: string) => {
+    setCart(prev => ({
+      ...prev,
+      [itemId]: Math.max(0, (prev[itemId] || 0) - 1)
+    }));
+  };
+
+  const getCartTotal = () => {
+    return Object.entries(cart).reduce((total, [itemId, quantity]) => {
+      const item = foodItems.find(item => item.id === itemId);
+      return total + (item ? item.price * quantity : 0);
+    }, 0);
+  };
+
+  const getCartItemCount = () => {
+    return Object.values(cart).reduce((total, quantity) => total + quantity, 0);
+  };
+
+  if (canteenLoading || foodLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-lg">Loading canteen details...</div>
+      </div>
+    );
+  }
+
+  if (!canteen) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-gray-800 mb-4">Canteen not found</h2>
+          <Link to="/canteens">
+            <Button>Back to Canteens</Button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Back Button */}
+        <Link to="/canteens" className="inline-flex items-center text-gray-600 hover:text-gray-800 mb-6">
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back to Canteens
+        </Link>
+
+        {/* Canteen Header */}
+        <div className="bg-white rounded-lg shadow-sm overflow-hidden mb-8">
+          <div className="relative h-64">
+            <img 
+              src={canteen.image_url || 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&h=400&fit=crop'} 
+              alt={canteen.name}
+              className="w-full h-full object-cover"
+            />
+            <Badge 
+              className={`absolute top-4 right-4 ${
+                canteen.status === 'open' ? 'bg-green-500' : 
+                canteen.status === 'busy' ? 'bg-yellow-500' : 'bg-red-500'
+              }`}
+            >
+              {canteen.status === 'open' ? 'Open' : 
+               canteen.status === 'busy' ? 'Busy' : 'Closed'}
+            </Badge>
+          </div>
+          
+          <div className="p-6">
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">{canteen.name}</h1>
+            <p className="text-gray-600 mb-4">{canteen.description}</p>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+              <div className="flex items-center">
+                <Star className="h-5 w-5 fill-yellow-400 text-yellow-400 mr-2" />
+                <span className="font-medium">{canteen.rating}</span>
+                <span className="text-gray-500 ml-1">({canteen.total_reviews} reviews)</span>
+              </div>
+              
+              <div className="flex items-center">
+                <Clock className="h-5 w-5 text-gray-400 mr-2" />
+                <span>{canteen.delivery_time_min}-{canteen.delivery_time_max} min delivery</span>
+              </div>
+              
+              <div className="flex items-center">
+                <MapPin className="h-5 w-5 text-gray-400 mr-2" />
+                <span>{canteen.location}</span>
+              </div>
+            </div>
+
+            {canteen.phone && (
+              <div className="flex items-center mb-4">
+                <Phone className="h-5 w-5 text-gray-400 mr-2" />
+                <span>{canteen.phone}</span>
+              </div>
+            )}
+            
+            <div className="text-sm text-gray-600">
+              <strong>Cuisines:</strong> {canteen.canteen_cuisines.map(c => c.cuisine_name).join(', ')}
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+          {/* Menu Section */}
+          <div className="lg:col-span-3">
+            {/* Filters */}
+            <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                  <Input
+                    placeholder="Search menu items..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+                
+                <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="All Categories" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Categories</SelectItem>
+                    {categories.map(category => (
+                      <SelectItem key={category} value={category!}>{category}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <div className="text-sm text-gray-500 flex items-center">
+                  {filteredItems.length} items available
+                </div>
+              </div>
+            </div>
+
+            {/* Menu Items */}
+            <div className="space-y-4">
+              {filteredItems.map((item) => (
+                <Card key={item.id} className="overflow-hidden">
+                  <CardContent className="p-0">
+                    <div className="flex">
+                      <img 
+                        src={item.image_url || 'https://images.unsplash.com/photo-1565299624946-b28f40a0ca4b?w=200&h=150&fit=crop'} 
+                        alt={item.name}
+                        className="w-32 h-32 object-cover"
+                      />
+                      <div className="flex-1 p-4">
+                        <div className="flex justify-between items-start mb-2">
+                          <h3 className="text-lg font-semibold">{item.name}</h3>
+                          <div className="text-right">
+                            <div className="text-lg font-bold text-green-600">₹{item.price}</div>
+                            {item.preparation_time && (
+                              <div className="text-xs text-gray-500">{item.preparation_time} min</div>
+                            )}
+                          </div>
+                        </div>
+                        
+                        <p className="text-gray-600 text-sm mb-2">{item.description}</p>
+                        
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-2">
+                            {item.is_vegetarian && (
+                              <Badge variant="outline" className="text-green-600 border-green-600">Veg</Badge>
+                            )}
+                            {item.is_vegan && (
+                              <Badge variant="outline" className="text-green-700 border-green-700">Vegan</Badge>
+                            )}
+                            {item.spice_level && item.spice_level > 0 && (
+                              <Badge variant="outline" className="text-red-600 border-red-600">
+                                Spicy {item.spice_level}/5
+                              </Badge>
+                            )}
+                            {item.rating && (
+                              <div className="flex items-center">
+                                <Star className="h-3 w-3 fill-yellow-400 text-yellow-400 mr-1" />
+                                <span className="text-xs">{item.rating}</span>
+                              </div>
+                            )}
+                          </div>
+                          
+                          <div className="flex items-center space-x-2">
+                            {cart[item.id] > 0 ? (
+                              <div className="flex items-center space-x-2">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => removeFromCart(item.id)}
+                                >
+                                  <Minus className="h-3 w-3" />
+                                </Button>
+                                <span className="w-8 text-center">{cart[item.id]}</span>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => addToCart(item.id)}
+                                >
+                                  <Plus className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            ) : (
+                              <Button
+                                size="sm"
+                                onClick={() => addToCart(item.id)}
+                                disabled={canteen.status === 'closed'}
+                              >
+                                <Plus className="h-4 w-4 mr-1" />
+                                Add
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+
+            {filteredItems.length === 0 && (
+              <div className="text-center py-12">
+                <p className="text-gray-500 text-lg">No menu items found.</p>
+              </div>
+            )}
+          </div>
+
+          {/* Cart Sidebar */}
+          <div className="lg:col-span-1">
+            <Card className="sticky top-8">
+              <CardContent className="p-6">
+                <h3 className="text-lg font-semibold mb-4 flex items-center">
+                  <ShoppingCart className="h-5 w-5 mr-2" />
+                  Your Order ({getCartItemCount()})
+                </h3>
+                
+                {getCartItemCount() === 0 ? (
+                  <p className="text-gray-500 text-center py-8">Your cart is empty</p>
+                ) : (
+                  <>
+                    <div className="space-y-3 mb-4">
+                      {Object.entries(cart)
+                        .filter(([_, quantity]) => quantity > 0)
+                        .map(([itemId, quantity]) => {
+                          const item = foodItems.find(item => item.id === itemId);
+                          if (!item) return null;
+                          
+                          return (
+                            <div key={itemId} className="flex justify-between items-center">
+                              <div className="flex-1">
+                                <div className="text-sm font-medium">{item.name}</div>
+                                <div className="text-xs text-gray-500">₹{item.price} each</div>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => removeFromCart(itemId)}
+                                  className="h-6 w-6 p-0"
+                                >
+                                  <Minus className="h-3 w-3" />
+                                </Button>
+                                <span className="w-6 text-center text-sm">{quantity}</span>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => addToCart(itemId)}
+                                  className="h-6 w-6 p-0"
+                                >
+                                  <Plus className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                    </div>
+                    
+                    <Separator className="my-4" />
+                    
+                    <div className="flex justify-between items-center mb-4">
+                      <span className="font-semibold">Total</span>
+                      <span className="font-bold text-lg">₹{getCartTotal()}</span>
+                    </div>
+                    
+                    <Button className="w-full" disabled={canteen.status === 'closed'}>
+                      {canteen.status === 'closed' ? 'Canteen Closed' : 'Place Order'}
+                    </Button>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default CanteenDetail;

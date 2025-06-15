@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -7,107 +7,82 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Clock, Star, MapPin, Search, Filter } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
+import { useQuery } from '@tanstack/react-query';
+
+type Canteen = {
+  id: string;
+  name: string;
+  description: string | null;
+  image_url: string | null;
+  location: string;
+  status: 'open' | 'closed' | 'busy';
+  rating: number | null;
+  total_reviews: number | null;
+  delivery_time_min: number | null;
+  delivery_time_max: number | null;
+  canteen_cuisines: { cuisine_name: string }[];
+};
 
 const Canteens = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [sortBy, setSortBy] = useState('rating');
 
-  // Mock data - will be replaced with real data from Supabase
-  const canteens = [
-    {
-      id: 1,
-      name: "Central Cafeteria",
-      image: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=500&h=300&fit=crop",
-      rating: 4.5,
-      totalReviews: 245,
-      cuisines: ["Indian", "Chinese", "Continental"],
-      deliveryTime: "15-25 min",
-      location: "Main Campus",
-      isOpen: true,
-      description: "The main cafeteria serving a variety of cuisines with the best quality ingredients."
-    },
-    {
-      id: 2,
-      name: "Hostel Mess",
-      image: "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=500&h=300&fit=crop",
-      rating: 4.2,
-      totalReviews: 189,
-      cuisines: ["South Indian", "North Indian"],
-      deliveryTime: "10-20 min",
-      location: "Hostel Block A",
-      isOpen: true,
-      description: "Authentic Indian cuisine served fresh daily with home-style cooking."
-    },
-    {
-      id: 3,
-      name: "Quick Bites",
-      image: "https://images.unsplash.com/photo-1565299624946-b28f40a0ca4b?w=500&h=300&fit=crop",
-      rating: 4.0,
-      totalReviews: 156,
-      cuisines: ["Snacks", "Fast Food", "Beverages"],
-      deliveryTime: "5-15 min",
-      location: "Library Block",
-      isOpen: false,
-      description: "Perfect for quick snacks and beverages between classes."
-    },
-    {
-      id: 4,
-      name: "Food Court Express",
-      image: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=500&h=300&fit=crop",
-      rating: 4.3,
-      totalReviews: 203,
-      cuisines: ["Multi-Cuisine", "Italian", "Mexican"],
-      deliveryTime: "20-30 min",
-      location: "Student Center",
-      isOpen: true,
-      description: "International cuisine hub with diverse food options for adventurous eaters."
-    },
-    {
-      id: 5,
-      name: "Healthy Corner",
-      image: "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=500&h=300&fit=crop",
-      rating: 4.4,
-      totalReviews: 178,
-      cuisines: ["Healthy", "Salads", "Juices"],
-      deliveryTime: "10-15 min",
-      location: "Sports Complex",
-      isOpen: true,
-      description: "Fresh, healthy options including salads, smoothies, and nutritious meals."
-    },
-    {
-      id: 6,
-      name: "Night Owl Cafe",
-      image: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=500&h=300&fit=crop",
-      rating: 3.9,
-      totalReviews: 134,
-      cuisines: ["Coffee", "Sandwiches", "Late Night"],
-      deliveryTime: "15-20 min",
-      location: "24/7 Block",
-      isOpen: true,
-      description: "Open late for night owls, serving coffee, snacks, and light meals."
+  const { data: canteens = [], isLoading, error } = useQuery({
+    queryKey: ['canteens'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('canteens')
+        .select(`
+          *,
+          canteen_cuisines (
+            cuisine_name
+          )
+        `);
+      
+      if (error) throw error;
+      return data as Canteen[];
     }
-  ];
+  });
 
   const filteredCanteens = canteens.filter(canteen => {
     const matchesSearch = canteen.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         canteen.cuisines.some(cuisine => cuisine.toLowerCase().includes(searchTerm.toLowerCase()));
+                         canteen.canteen_cuisines.some(cuisine => 
+                           cuisine.cuisine_name.toLowerCase().includes(searchTerm.toLowerCase())
+                         );
     
-    if (filterStatus === 'open') return matchesSearch && canteen.isOpen;
-    if (filterStatus === 'closed') return matchesSearch && !canteen.isOpen;
+    if (filterStatus === 'open') return matchesSearch && canteen.status === 'open';
+    if (filterStatus === 'closed') return matchesSearch && canteen.status === 'closed';
     return matchesSearch;
   });
 
   const sortedCanteens = [...filteredCanteens].sort((a, b) => {
-    if (sortBy === 'rating') return b.rating - a.rating;
+    if (sortBy === 'rating') return (b.rating || 0) - (a.rating || 0);
     if (sortBy === 'name') return a.name.localeCompare(b.name);
     if (sortBy === 'deliveryTime') {
-      const aTime = parseInt(a.deliveryTime.split('-')[0]);
-      const bTime = parseInt(b.deliveryTime.split('-')[0]);
+      const aTime = a.delivery_time_min || 0;
+      const bTime = b.delivery_time_min || 0;
       return aTime - bTime;
     }
     return 0;
   });
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-lg">Loading canteens...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-lg text-red-600">Error loading canteens</div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -166,14 +141,18 @@ const Canteens = () => {
             <Card key={canteen.id} className="overflow-hidden hover:shadow-lg transition-shadow">
               <div className="relative">
                 <img 
-                  src={canteen.image} 
+                  src={canteen.image_url || 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=500&h=300&fit=crop'} 
                   alt={canteen.name}
                   className="w-full h-48 object-cover"
                 />
                 <Badge 
-                  className={`absolute top-4 right-4 ${canteen.isOpen ? 'bg-green-500' : 'bg-red-500'}`}
+                  className={`absolute top-4 right-4 ${
+                    canteen.status === 'open' ? 'bg-green-500' : 
+                    canteen.status === 'busy' ? 'bg-yellow-500' : 'bg-red-500'
+                  }`}
                 >
-                  {canteen.isOpen ? 'Open' : 'Closed'}
+                  {canteen.status === 'open' ? 'Open' : 
+                   canteen.status === 'busy' ? 'Busy' : 'Closed'}
                 </Badge>
               </div>
               <CardContent className="p-6">
@@ -184,18 +163,18 @@ const Canteens = () => {
                 
                 <div className="flex items-center mb-2">
                   <Star className="h-4 w-4 fill-yellow-400 text-yellow-400 mr-1" />
-                  <span className="text-sm font-medium">{canteen.rating}</span>
-                  <span className="text-sm text-gray-500 ml-1">({canteen.totalReviews} reviews)</span>
+                  <span className="text-sm font-medium">{canteen.rating || 0}</span>
+                  <span className="text-sm text-gray-500 ml-1">({canteen.total_reviews || 0} reviews)</span>
                 </div>
                 
                 <p className="text-gray-600 text-sm mb-3">
-                  {canteen.cuisines.join(' • ')}
+                  {canteen.canteen_cuisines.map(c => c.cuisine_name).join(' • ')}
                 </p>
                 
                 <div className="flex items-center justify-between text-sm text-gray-500 mb-4">
                   <div className="flex items-center">
                     <Clock className="h-4 w-4 mr-1" />
-                    {canteen.deliveryTime}
+                    {canteen.delivery_time_min}-{canteen.delivery_time_max} min
                   </div>
                   <div className="flex items-center">
                     <MapPin className="h-4 w-4 mr-1" />
@@ -203,9 +182,9 @@ const Canteens = () => {
                   </div>
                 </div>
                 
-                <Button className="w-full" asChild disabled={!canteen.isOpen}>
+                <Button className="w-full" asChild disabled={canteen.status === 'closed'}>
                   <Link to={`/canteen/${canteen.id}`}>
-                    {canteen.isOpen ? 'View Menu' : 'Currently Closed'}
+                    {canteen.status === 'closed' ? 'Currently Closed' : 'View Menu'}
                   </Link>
                 </Button>
               </CardContent>
