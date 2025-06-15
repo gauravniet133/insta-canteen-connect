@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Clock, CheckCircle, Truck, Chef, Package } from 'lucide-react';
+import { Clock, CheckCircle, Truck, ChefHat, Package } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -80,7 +80,7 @@ const OrderTracking = () => {
     switch (status) {
       case 'pending': return <Clock className="h-4 w-4" />;
       case 'confirmed': return <CheckCircle className="h-4 w-4" />;
-      case 'preparing': return <Chef className="h-4 w-4" />;
+      case 'preparing': return <ChefHat className="h-4 w-4" />;
       case 'ready': return <Package className="h-4 w-4" />;
       case 'completed': return <Truck className="h-4 w-4" />;
       default: return <Clock className="h-4 w-4" />;
