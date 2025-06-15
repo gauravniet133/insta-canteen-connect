@@ -6,7 +6,7 @@ import { useSearch } from '@/hooks/useSearch';
 import { useSort } from '@/hooks/useSort';
 import SearchFilters from '@/components/SearchFilters';
 import SortOptions from '@/components/SortOptions';
-import FoodItemCar from '@/components/FoodItemCard';
+import FoodItemCard from '@/components/FoodItemCard';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import { Card, CardContent } from '@/components/ui/card';
 import { Search as SearchIcon } from 'lucide-react';
