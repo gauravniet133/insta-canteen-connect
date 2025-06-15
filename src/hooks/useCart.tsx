@@ -1,3 +1,4 @@
+
 import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
@@ -21,7 +22,7 @@ interface CartContextType {
   removeItem: (id: string) => void;
   updateQuantity: (id: string, quantity: number) => void;
   clearCart: () => void;
-  placeOrder: () => Promise<boolean>;
+  placeOrder: (specialInstructions?: string) => Promise<{ success: boolean; orderId?: string }>;
   loading: boolean;
 }
 
@@ -117,11 +118,29 @@ export const CartProvider = ({ children }: CartProviderProps) => {
     }
   };
 
-  const placeOrder = async (): Promise<boolean> => {
-    if (!user || items.length === 0) return false;
+  const placeOrder = async (specialInstructions?: string): Promise<{ success: boolean; orderId?: string }> => {
+    if (!user) {
+      toast({
+        title: "Authentication required",
+        description: "Please sign in to place an order.",
+        variant: "destructive",
+      });
+      return { success: false };
+    }
+
+    if (items.length === 0) {
+      toast({
+        title: "Cart is empty",
+        description: "Please add items to your cart before placing an order.",
+        variant: "destructive",
+      });
+      return { success: false };
+    }
     
     setLoading(true);
     try {
+      console.log('Starting order placement process...');
+      
       // Group items by canteen
       const itemsByCanteen = items.reduce((acc, item) => {
         if (!acc[item.canteen_id]) {
@@ -130,6 +149,10 @@ export const CartProvider = ({ children }: CartProviderProps) => {
         acc[item.canteen_id].push(item);
         return acc;
       }, {} as Record<string, CartItem[]>);
+
+      console.log('Items grouped by canteen:', itemsByCanteen);
+
+      const orderIds: string[] = [];
 
       // Create orders for each canteen
       for (const [canteenId, canteenItems] of Object.entries(itemsByCanteen)) {
@@ -141,28 +164,42 @@ export const CartProvider = ({ children }: CartProviderProps) => {
           price: item.price,
         }));
 
-        await orderService.createOrder({
+        console.log(`Creating order for canteen ${canteenId}:`, {
+          canteen_id: canteenId,
+          order_items: orderItems,
+          total_amount: orderTotal + 5,
+          delivery_fee: 5,
+          special_instructions: specialInstructions
+        });
+
+        const order = await orderService.createOrder({
           canteen_id: canteenId,
           order_items: orderItems,
           total_amount: orderTotal + 5, // Including delivery fee
           delivery_fee: 5,
+          special_instructions: specialInstructions,
         });
+
+        orderIds.push(order.id);
+        console.log('Order created successfully:', order.id);
       }
 
       clearCart();
+      
       toast({
         title: "Order Placed Successfully!",
-        description: "Your order has been placed and is being processed",
+        description: `${orderIds.length > 1 ? 'Orders have' : 'Order has'} been placed and ${orderIds.length > 1 ? 'are' : 'is'} being processed`,
       });
-      return true;
+      
+      return { success: true, orderId: orderIds[0] };
     } catch (error) {
       console.error('Error placing order:', error);
       toast({
         title: "Order Failed",
-        description: "Unable to place your order. Please try again.",
+        description: error instanceof Error ? error.message : "Unable to place your order. Please try again.",
         variant: "destructive",
       });
-      return false;
+      return { success: false };
     } finally {
       setLoading(false);
     }

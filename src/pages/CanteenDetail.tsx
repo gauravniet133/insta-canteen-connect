@@ -164,10 +164,16 @@ const CanteenDetail = () => {
       return;
     }
 
-    const success = await placeOrder();
-    if (success) {
+    const result = await placeOrder(specialInstructions);
+    if (result.success) {
       setSpecialInstructions('');
-      navigate('/profile');
+      toast({
+        title: "Success!",
+        description: "Redirecting to your orders...",
+      });
+      setTimeout(() => {
+        navigate('/profile');
+      }, 1500);
     }
   };
 
