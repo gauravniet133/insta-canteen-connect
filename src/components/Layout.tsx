@@ -1,12 +1,12 @@
 
 import { Outlet } from 'react-router-dom';
-import Navbar from './Navbar';
+import RoleBasedNavbar from './RoleBasedNavbar';
 
 const Layout = () => {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-      <Navbar />
-      <main className="relative">
+    <div className="min-h-screen bg-gray-50">
+      <RoleBasedNavbar />
+      <main>
         <Outlet />
       </main>
     </div>
