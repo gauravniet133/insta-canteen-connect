@@ -19,6 +19,9 @@ import OrderConfirmation from "./components/OrderConfirmation";
 import NotFound from "./pages/NotFound";
 import Search from "./pages/Search";
 import SellerDashboard from "./pages/SellerDashboard";
+import SellerMenuManagement from "./pages/SellerMenuManagement";
+import SellerOrderManagement from "./pages/SellerOrderManagement";
+import SellerCanteenSettings from "./pages/SellerCanteenSettings";
 import Cart from "./components/Cart";
 
 const queryClient = new QueryClient();
@@ -46,6 +49,10 @@ const App = () => (
                   
                   {/* Seller Routes */}
                   <Route path="seller/dashboard" element={<SellerDashboard />} />
+                  <Route path="seller/orders" element={<SellerOrderManagement />} />
+                  <Route path="seller/menu" element={<SellerMenuManagement />} />
+                  <Route path="seller/canteen" element={<SellerCanteenSettings />} />
+                  <Route path="seller/settings" element={<SellerCanteenSettings />} />
                   
                   {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                   <Route path="*" element={<NotFound />} />
