@@ -22,6 +22,8 @@ import {
   Save
 } from 'lucide-react';
 
+type CanteenStatus = 'open' | 'closed' | 'busy';
+
 interface Canteen {
   id: string;
   name: string;
@@ -32,7 +34,21 @@ interface Canteen {
   image_url?: string;
   opening_time?: string;
   closing_time?: string;
-  status: string;
+  status: CanteenStatus;
+  delivery_time_min: number;
+  delivery_time_max: number;
+}
+
+interface FormData {
+  name: string;
+  description: string;
+  location: string;
+  phone: string;
+  email: string;
+  image_url: string;
+  opening_time: string;
+  closing_time: string;
+  status: CanteenStatus;
   delivery_time_min: number;
   delivery_time_max: number;
 }
@@ -43,7 +59,7 @@ const SellerCanteenSettings = () => {
   const [canteen, setCanteen] = useState<Canteen | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<FormData>({
     name: '',
     description: '',
     location: '',
@@ -52,7 +68,7 @@ const SellerCanteenSettings = () => {
     image_url: '',
     opening_time: '',
     closing_time: '',
-    status: 'open',
+    status: 'open' as CanteenStatus,
     delivery_time_min: 15,
     delivery_time_max: 30
   });
@@ -88,7 +104,7 @@ const SellerCanteenSettings = () => {
           image_url: data.image_url || '',
           opening_time: data.opening_time || '',
           closing_time: data.closing_time || '',
-          status: data.status || 'open',
+          status: (data.status as CanteenStatus) || 'open',
           delivery_time_min: data.delivery_time_min || 15,
           delivery_time_max: data.delivery_time_max || 30
         });
@@ -168,6 +184,10 @@ const SellerCanteenSettings = () => {
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleStatusChange = (value: string) => {
+    setFormData({...formData, status: value as CanteenStatus});
   };
 
   if (profileLoading) {
@@ -371,7 +391,7 @@ const SellerCanteenSettings = () => {
             <CardContent>
               <div>
                 <Label htmlFor="status">Current Status</Label>
-                <Select value={formData.status} onValueChange={(value) => setFormData({...formData, status: value})}>
+                <Select value={formData.status} onValueChange={handleStatusChange}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
